@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { GoalItemComponent } from '../goal-item/goal-item.component';
 import { NewGoalComponent } from '../new-goal/new-goal.component';
 import { GoalDetailsComponent } from '../goal-details/goal-details.component';
+import { GoalService } from '../../services/goal.service';
+import { GoalResponse } from '../../model/goal';
 
 @Component({
   selector: 'app-goal-list',
@@ -22,61 +24,36 @@ import { GoalDetailsComponent } from '../goal-details/goal-details.component';
   styleUrls: ['./goal-list.component.css']
 })
 export class GoalListComponent implements OnInit {
-  goals: any[] = [];
+  private goalService = inject(GoalService);
+  
+  goals: GoalResponse[] = [];
   showNewGoalModal = false;
   showDetailsModal = false;
-  selectedGoal: any = null;
-
-  constructor() {}
+  selectedGoal: GoalResponse | null = null; 
+  loading = false;
+  error: string | null = null;
 
   ngOnInit() {
     this.loadGoals();
+    // this.testCreateGoal(); // TODO: COMENTAR O ELIMINAR LA LLAMADA DE PRUEBA
   }
 
   loadGoals() {
-    // Aquí cargarías los goals desde tu servicio
-    this.goals = [
-      { 
-        id: 1, 
-        title: 'Learn Angular', 
-        progress: 75, 
-        startDate: '2024-01-01', 
-        endDate: '2024-03-30',
-        description: 'Master Angular framework including components, services, routing, and state management',
-        milestones: [
-          { id: 1, title: 'Components & Templates', completed: true, targetDate: '2024-01-15' },
-          { id: 2, title: 'Services & Dependency Injection', completed: true, targetDate: '2024-02-01' },
-          { id: 3, title: 'Routing & Navigation', completed: false, targetDate: '2024-02-15' },
-          { id: 4, title: 'Forms & Validation', completed: false, targetDate: '2024-03-01' }
-        ]
+    this.loading = true;
+    this.error = null;
+    
+    this.goalService.getAllGoalsByUser().subscribe({
+      next: (goals) => {
+        console.log('Goals loaded:', goals);
+        this.goals = goals;
+        this.loading = false;
       },
-      { 
-        id: 2, 
-        title: 'Complete Project', 
-        progress: 30, 
-        startDate: '2024-02-01', 
-        endDate: '2024-04-15',
-        description: 'Finish the TaskMaster Pro application with all features',
-        milestones: [
-          { id: 5, title: 'Frontend Development', completed: true, targetDate: '2024-02-28' },
-          { id: 6, title: 'Backend API', completed: false, targetDate: '2024-03-15' },
-          { id: 7, title: 'Testing', completed: false, targetDate: '2024-03-30' }
-        ]
-      },
-      { 
-        id: 3, 
-        title: 'Exercise Routine', 
-        progress: 90, 
-        startDate: '2024-01-15', 
-        endDate: '2024-02-28',
-        description: 'Establish and maintain a consistent exercise routine',
-        milestones: [
-          { id: 8, title: 'Week 1-2: Building habit', completed: true, targetDate: '2024-01-28' },
-          { id: 9, title: 'Week 3-4: Increasing intensity', completed: true, targetDate: '2024-02-11' },
-          { id: 10, title: 'Week 5-6: Maintenance', completed: false, targetDate: '2024-02-28' }
-        ]
+      error: (error) => {
+        this.error = error.message;
+        this.loading = false;
+        console.error('Error loading goals:', error);
       }
-    ];
+    });
   }
 
   openNewGoalModal() {
@@ -87,19 +64,79 @@ export class GoalListComponent implements OnInit {
     this.showNewGoalModal = false;
   }
 
-  onGoalCreated(goal: any) {
-    console.log('Goal created:', goal);
-    this.loadGoals();
-    this.closeNewGoalModal();
+  onGoalCreated(goalData: any) {
+    this.loading = true;
+    
+    this.goalService.createGoalWithMilestones(goalData).subscribe({
+      next: (response) => {
+        console.log('Goal created successfully:', response);
+        this.loadGoals();
+        this.closeNewGoalModal();
+      },
+      error: (error) => {
+        this.error = error.message;
+        this.loading = false;
+        console.error('Error creating goal:', error);
+      }
+    });
   }
 
-  viewGoalDetails(goal: any) {
-    this.selectedGoal = goal;
-    this.showDetailsModal = true;
+  viewGoalDetails(goal: GoalResponse) { // 👈 USAR GoalResponse
+    if (!goal.goalId) return;
+    
+    this.loading = true;
+    
+    this.goalService.getGoalById(goal.goalId).subscribe({
+      next: (goalDetails) => {
+        console.log('Goal details loaded:', goalDetails);
+        this.selectedGoal = goalDetails;
+        this.showDetailsModal = true;
+        this.loading = false;
+      },
+      error: (error) => {
+        this.error = error.message;
+        this.loading = false;
+        console.error('Error loading goal details:', error);
+      }
+    });
   }
 
   closeDetailsModal() {
     this.showDetailsModal = false;
     this.selectedGoal = null;
+  }
+
+  retry() {
+    this.loadGoals();
+  }
+
+  // Método de prueba - puedes llamarlo manualmente desde la consola del navegador si es necesario
+  testCreateGoal() {
+    const testGoal = {
+      goalName: "Aprender Angular",
+      description: "Completar el curso de Angular avanzado",
+      startDate: "2026-03-01",
+      endDate: "2026-06-30",
+      milestones: [
+        {
+          milestoneName: "Componentes y Templates",
+          targetDate: "2026-03-15",
+          description: "Dominar la creación de componentes"
+        },
+        {
+          milestoneName: "Servicios y DI",
+          targetDate: "2026-04-01",
+          description: "Entender la inyección de dependencias"
+        },
+        {
+          milestoneName: "Routing",
+          targetDate: "2026-04-30",
+          description: "Implementar navegación avanzada"
+        }
+      ]
+    };
+
+    console.log('🧪 Test goal:', testGoal);
+    this.onGoalCreated(testGoal);
   }
 }

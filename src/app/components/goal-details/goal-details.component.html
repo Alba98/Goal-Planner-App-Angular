@@ -9,7 +9,7 @@
             <div class="modal-body">
                 <!-- Header con título y progreso -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h3 class="fw-bold mb-0">{{goal.title}}</h3>
+                    <h3 class="fw-bold mb-0">{{goal.goalName}}</h3>
                     <div class="text-end">
                         <div class="h2 mb-0" [ngClass]="'text-' + getProgressColor(goal.progress)">
                             {{goal.progress}}%
@@ -73,10 +73,10 @@
                     <div>
                         <h5 class="fw-semibold mb-3">Milestones</h5>
                         <div class="list-group">
-                            @for (milestone of goal.milestones; track milestone.id) {
+                            @for (milestone of goal.milestones; track milestone.milestoneId) {
                                 <div class="list-group-item list-group-item-action d-flex align-items-center">
                                     <div class="me-3">
-                                        @if (milestone.completed) {
+                                        @if (milestone.isCompleted) {
                                             <i class="fas fa-check-circle text-success fa-lg"></i>
                                         } @else {
                                             <i class="far fa-circle text-muted fa-lg"></i>
@@ -84,8 +84,8 @@
                                     </div>
                                     <div class="flex-grow-1">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-0" [class.text-muted]="milestone.completed">
-                                                {{milestone.title}}
+                                            <h6 class="mb-0" [class.text-muted]="milestone.isCompleted">
+                                                {{milestone.milestoneName}}
                                             </h6>
                                             <small class="text-muted">
                                                 <i class="far fa-calendar-alt me-1"></i>
