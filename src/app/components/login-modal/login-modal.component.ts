@@ -1,6 +1,8 @@
 import { Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';  
 import { AuthService } from '../../services/auth.service';
+import { LoginData, RegisterData } from '../../model/user';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login-modal',
@@ -15,21 +17,21 @@ export class LoginModalComponent {
   // Signal para alternar entre login (true) y registro (false)
   showLogin = signal<boolean>(true);
 
-  // Objeto para el registro
-  loginObj = {
+  // Usamos la interfaz LoginData
+  loginObj: LoginData = {
     emailId: '',
     password: ''
   };
 
-  // Objeto para el registro
-  registerObj = {
+  // Usamos la interfaz RegisterData
+  registerObj: RegisterData = {
     fullName: '',
     emailId: '',
     password: '',
     mobileNo: ''
   };
-
-  constructor(private authService: AuthService) {}
+  
+  constructor(private authService: AuthService, private router: Router) {}
 
   // Cierra el modal (emite el evento al padre)
   closeModal() {
@@ -64,6 +66,7 @@ export class LoginModalComponent {
     this.authService.login(this.loginObj).subscribe({
       next: () => {
         this.closeModal(); // Cierra el modal al loguearse
+        this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         // Muestra mensaje de error
@@ -77,7 +80,8 @@ export class LoginModalComponent {
     this.authService.register(this.registerObj).subscribe({
       next: () => {
         // Al registrarse, también puede cerrar modal o cambiar a login
-        this.showLogin.set(true); // o this.closeModal();
+        this.closeModal(); // this.closeModal(); o this.showLogin.set(true);
+        this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         // Muestra mensaje de error
