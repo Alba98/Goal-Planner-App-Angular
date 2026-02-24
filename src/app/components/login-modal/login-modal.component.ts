@@ -66,7 +66,7 @@ export class LoginModalComponent {
     this.authService.login(this.loginObj).subscribe({
       next: () => {
         this.closeModal(); // Cierra el modal al loguearse
-        this.router.navigate(['/dashboard']);
+        //this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         // Muestra mensaje de error

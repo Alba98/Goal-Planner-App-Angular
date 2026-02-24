@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg navbar-dark">
     <div class="container">
-        <a class="navbar-brand fw-bold" routerLink="home">
+        <a class="navbar-brand fw-bold" routerLink="/home">
             <i class="fas fa-check-double me-2"></i>TaskMaster Pro
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -9,20 +9,20 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                    <a class="nav-link active" routerLink="home">Home</a>
+                    <a class="nav-link" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
                 </li>
                 @if (authService.loggedUser()) {
                     <li class="nav-item">
-                        <a class="nav-link active" routerLink="dashboard">Dashboard</a>
+                        <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" routerLink="tasks">Tasks</a>
+                        <a class="nav-link" routerLink="/tasks" routerLinkActive="active">Tasks</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" routerLink="goals">Goals</a>
+                        <a class="nav-link" routerLink="/goals" routerLinkActive="active">Goals</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" routerLink="reminders">Reminders</a>
+                        <a class="nav-link" routerLink="/reminders" routerLinkActive="active">Reminders</a>
                     </li>
                 }
             </ul>

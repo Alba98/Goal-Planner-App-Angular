@@ -9,16 +9,17 @@ import { LayoutComponent } from './components/layout/layout.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'home', pathMatch: 'full' },
-  { path: 'home', component: HomeComponent },
   {
     path: '',
-    component: LayoutComponent, // Este componente tiene <router-outlet>
-    canActivate: [authGuard],
+    component: LayoutComponent, // Todas las rutas usan el mismo layout
     children: [
-      { path: 'dashboard', component: DashboardComponent },
-      { path: 'goals', component: GoalListComponent },
-      { path: 'tasks', component: TaskListComponent },
-      { path: 'reminders', component: RemindersComponent },
+      { path: 'home', component: HomeComponent }, // Home público
+      { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] }, // Protegidas
+      { path: 'goals', component: GoalListComponent, canActivate: [authGuard] },
+      { path: 'tasks', component: TaskListComponent, canActivate: [authGuard] },
+      { path: 'reminders', component: RemindersComponent, canActivate: [authGuard] },
     ]
-  }
+  },
+  // Ruta comodín para redirigir cualquier URL no encontrada
+  { path: '**', redirectTo: 'home' }
 ];
