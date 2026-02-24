@@ -8,21 +8,21 @@
                         (click)="closeModal()" data-bs-dismiss="modal"></button>
                 </div>
                 
-                <!-- @if (isLoginFormVisible()) { -->
+                @if (showLogin()) {
                     <form id="loginForm" class="needs-validation">
                         <div class="mb-3">
-                            <input type="email" name="emailId"class="form-control" placeholder="Email" required>
+                            <input type="email" name="emailId" [(ngModel)]="loginObj.emailId" class="form-control" placeholder="Email" required>
                         </div>
                         <div class="mb-3">
-                            <input type="password" class="form-control" name="password" placeholder="Password" required>
+                            <input type="password" class="form-control" name="password" [(ngModel)]="loginObj.password" placeholder="Password" required>
                         </div>
-                        <button type="button" class="btn btn-primary w-100 mb-3">Login</button>
+                        <button type="button" (click)="onLogin()" class="btn btn-primary w-100 mb-3">Login</button>
                         <p class="text-center">
                             Don't have an account? 
-                            <a id="showSignup" class="text-decoration-none">Sign Up</a>
+                            <a id="showSignup" class="text-decoration-none" (click)="toggleForm()">Sign Up</a>
                         </p>
                     </form>
-                <!--  } @else {
+                } @else {
                     <form id="signupForm" class="needs-validation">
                         <div class="mb-3">
                             <input type="text" name="fullName" [(ngModel)]="registerObj.fullName" class="form-control" placeholder="Full Name" required>
@@ -42,7 +42,7 @@
                             <a   id="showLogin" class="text-decoration-none" (click)="toggleForm()">Login</a>
                         </p>
                     </form>
-                } -->
+                }
                
 
                 <!-- Signup Form (Hidden by default) -->
