@@ -1,1 +1,43 @@
-<p>goal-list works!</p>
+<div class="container py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold">Goals</h1>
+        <button class="btn btn-primary" (click)="openNewGoalModal()">
+            <i class="fas fa-plus me-2"></i>
+            New Goal 
+        </button>
+    </div>
+    
+    <!-- Lista de goals -->
+    <div class="row g-4">
+        @for (goal of goals; track goal.id) {
+            <div class="col-12 col-md-6 col-lg-4">
+                <app-goal-item 
+                    [goal]="goal"
+                    (viewDetails)="viewGoalDetails($event)">
+                </app-goal-item>
+            </div>
+        } @empty {
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-bullseye fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No goals yet</h4>
+                <p class="text-muted">Click the "New Goal" button to create your first goal</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal para crear nuevo goal -->
+@if (showNewGoalModal) {
+    <app-new-goal 
+        (close)="closeNewGoalModal()"
+        (goalCreated)="onGoalCreated($event)">
+    </app-new-goal>
+}
+
+<!-- Modal para ver detalles del goal -->
+@if (showDetailsModal && selectedGoal) {
+    <app-goal-details 
+        [goal]="selectedGoal"
+        (close)="closeDetailsModal()">
+    </app-goal-details>
+}
