@@ -1,5 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';  
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login-modal',
@@ -14,12 +15,11 @@ export class LoginModalComponent {
   // Signal para alternar entre login (true) y registro (false)
   showLogin = signal<boolean>(true);
 
-   // Objeto para el registro
+  // Objeto para el registro
   loginObj = {
     emailId: '',
     password: ''
   };
-
 
   // Objeto para el registro
   registerObj = {
@@ -29,11 +29,14 @@ export class LoginModalComponent {
     mobileNo: ''
   };
 
+  constructor(private authService: AuthService) {}
+
   // Cierra el modal (emite el evento al padre)
   closeModal() {
     this.close.emit();
   }
 
+  /*
   // Maneja clics en el fondo del modal
   onBackdropClick(event: MouseEvent) {
     // Si el clic fue directamente en el elemento con clase 'modal' (el fondo)
@@ -49,6 +52,7 @@ export class LoginModalComponent {
       this.closeModal();
     }
   }
+  */
 
   // Alternar entre login y registro
   toggleForm() {
@@ -57,13 +61,29 @@ export class LoginModalComponent {
 
   // Método llamado al enviar login
   onLogin() {
-    console.log('Login attempted');
-    // Aquí iría la lógica de autenticación
+    this.authService.login(this.loginObj).subscribe({
+      next: () => {
+        this.closeModal(); // Cierra el modal al loguearse
+      },
+      error: (err) => {
+        // Muestra mensaje de error
+        console.error('Login error', err);
+      }
+    });
   }
 
   // Método llamado al enviar registro
   onRegister() {
-    console.log('Register attempted', this.registerObj);
-    // Aquí iría la lógica de registro
+    this.authService.register(this.registerObj).subscribe({
+      next: () => {
+        // Al registrarse, también puede cerrar modal o cambiar a login
+        this.showLogin.set(true); // o this.closeModal();
+      },
+      error: (err) => {
+        // Muestra mensaje de error
+        console.error('Register error', err);
+      }
+    });
   }
+
 }
