@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -7,6 +7,9 @@ import { NewGoalComponent } from '../new-goal/new-goal.component';
 import { GoalDetailsComponent } from '../goal-details/goal-details.component';
 import { GoalService } from '../../services/goal.service';
 import { GoalResponse } from '../../model/goal';
+import { NotificationService } from '../../services/notification.service';
+
+type FilterType = 'all' | 'active' | 'completed' | 'overdue';
 
 @Component({
   selector: 'app-goal-list',
@@ -25,17 +28,64 @@ import { GoalResponse } from '../../model/goal';
 })
 export class GoalListComponent implements OnInit {
   private goalService = inject(GoalService);
+  private notificationService = inject(NotificationService);
   
-  goals: GoalResponse[] = [];
+  // Signals para mejor reactividad
+  private allGoals = signal<GoalResponse[]>([]);
+  filter = signal<FilterType>('all');
+  private searchTerm = signal('');
+  
+  // Computed signals para los goals filtrados
+  filteredGoals = computed(() => {
+    let goals = this.allGoals();
+    
+    // Aplicar filtro por estado
+    switch (this.filter()) {
+      case 'active':
+        goals = goals.filter(g => !g.isAchieved && !this.isOverdue(g));
+        break;
+      case 'completed':
+        goals = goals.filter(g => g.isAchieved);
+        break;
+      case 'overdue':
+        goals = goals.filter(g => !g.isAchieved && this.isOverdue(g));
+        break;
+      default: // 'all'
+        break;
+    }
+    
+    // Aplicar búsqueda por texto
+    const search = this.searchTerm().toLowerCase();
+    if (search) {
+      goals = goals.filter(g => 
+        g.goalName.toLowerCase().includes(search) || 
+        g.description?.toLowerCase().includes(search)
+      );
+    }
+    
+    return goals;
+  });
+  
+  // Estadísticas
+  stats = computed(() => {
+    const goals = this.allGoals();
+    return {
+      total: goals.length,
+      completed: goals.filter(g => g.isAchieved).length,
+      active: goals.filter(g => !g.isAchieved && !this.isOverdue(g)).length,
+      overdue: goals.filter(g => !g.isAchieved && this.isOverdue(g)).length
+    };
+  });
+
   showNewGoalModal = false;
   showDetailsModal = false;
-  selectedGoal: GoalResponse | null = null; 
+  selectedGoal: GoalResponse | null = null;
   loading = false;
   error: string | null = null;
+  viewMode: 'grid' | 'list' = 'grid'; // Para cambiar vista
 
   ngOnInit() {
     this.loadGoals();
-    // this.testCreateGoal(); // TODO: COMENTAR O ELIMINAR LA LLAMADA DE PRUEBA
   }
 
   loadGoals() {
@@ -45,7 +95,7 @@ export class GoalListComponent implements OnInit {
     this.goalService.getAllGoalsByUser().subscribe({
       next: (goals) => {
         console.log('Goals loaded:', goals);
-        this.goals = goals;
+        this.allGoals.set(goals);
         this.loading = false;
       },
       error: (error) => {
@@ -54,6 +104,25 @@ export class GoalListComponent implements OnInit {
         console.error('Error loading goals:', error);
       }
     });
+  }
+
+  setFilter(filter: FilterType) {
+    this.filter.set(filter);
+  }
+
+  setSearchTerm(term: string) {
+    this.searchTerm.set(term);
+  }
+
+  toggleViewMode() {
+    this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
+  }
+
+  isOverdue(goal: GoalResponse): boolean {
+    if (goal.isAchieved) return false;
+    const today = new Date();
+    const endDate = new Date(goal.endDate);
+    return endDate < today;
   }
 
   openNewGoalModal() {
@@ -82,14 +151,11 @@ export class GoalListComponent implements OnInit {
   }
 
   onGoalUpdated() {
-    // Recargar la lista de goals cuando se actualiza un goal
     this.loadGoals();
-    
-    // Opcional: mostrar mensaje de éxito
     console.log('Goal updated successfully');
   }
 
-  viewGoalDetails(goal: GoalResponse) { // 👈 USAR GoalResponse
+  viewGoalDetails(goal: GoalResponse) {
     if (!goal.goalId) return;
     
     this.loading = true;
@@ -118,33 +184,21 @@ export class GoalListComponent implements OnInit {
     this.loadGoals();
   }
 
-  // Método de prueba - puedes llamarlo manualmente desde la consola del navegador si es necesario
-  testCreateGoal() {
-    const testGoal = {
-      goalName: "Aprender Angular",
-      description: "Completar el curso de Angular avanzado",
-      startDate: "2026-03-01",
-      endDate: "2026-06-30",
-      milestones: [
-        {
-          milestoneName: "Componentes y Templates",
-          targetDate: "2026-03-15",
-          description: "Dominar la creación de componentes"
-        },
-        {
-          milestoneName: "Servicios y DI",
-          targetDate: "2026-04-01",
-          description: "Entender la inyección de dependencias"
-        },
-        {
-          milestoneName: "Routing",
-          targetDate: "2026-04-30",
-          description: "Implementar navegación avanzada"
-        }
-      ]
-    };
-
-    console.log('🧪 Test goal:', testGoal);
-    this.onGoalCreated(testGoal);
+  // Método para archivar/eliminar goals completados TODO
+  archiveCompletedGoals() {
+    const completedGoals = this.allGoals().filter(g => g.isAchieved);
+    
+    if (completedGoals.length === 0) {
+      this.notificationService.info('No completed goals to archive', 'Info');
+      return;
+    }
+    
+    if (confirm(`Are you sure you want to archive ${completedGoals.length} completed goal(s)?`)) {
+      const activeGoals = this.allGoals().filter(g => !g.isAchieved);
+      this.allGoals.set(activeGoals);
+      
+      console.log(`📦 Archived ${completedGoals.length} completed goals`);
+      this.notificationService.success(`Archived ${completedGoals.length} goals`, 'Success');
+    }
   }
 }
