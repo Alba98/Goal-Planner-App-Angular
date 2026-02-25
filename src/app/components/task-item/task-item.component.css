@@ -7,15 +7,21 @@
     box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
 }
 
-.list-group-item {
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+.transition {
+    transition: all 0.3s ease;
 }
 
-.list-group-item:hover {
-    background-color: #f8f9fa;
+.card {
+    cursor: pointer;
 }
 
 .form-check-input {
     cursor: pointer;
+    width: 1.2em;
+    height: 1.2em;
+}
+
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
 }
