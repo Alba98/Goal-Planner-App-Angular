@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, catchError, throwError } from 'rxjs';
+import { Observable, map, catchError, throwError, forkJoin } from 'rxjs';
 import { AuthService } from './auth.service';
 import { GoalRequest, GoalResponse, MilestoneRequest } from '../model/goal';
 
@@ -106,12 +106,34 @@ export class GoalService {
       params: { userId: user.userId.toString() } 
     }).pipe(
       map(goals => {
-        console.log('📥 Goals recibidos:', goals);
-        // Transformar cada goal para incluir el progreso
-        return goals.map(goal => this.transformGoalResponse(goal));
+        // Transformar cada goal con progreso por milestone
+        const transformedGoals = goals.map(goal => this.transformGoalResponse(goal));
+        
+        // Si hay pocos goals (< 5), podrías cargar detalles automáticamente
+        if (transformedGoals.length <= 5) {
+          // Aquí podrías hacer forkJoin para cargar todos los detalles
+          this.loadMilestonesForGoals(transformedGoals).subscribe();
+        }
+        
+        return transformedGoals;
       }),
       catchError(this.handleError)
     );
+  }
+
+  // Método para cargar milestones en segundo plano
+  private loadMilestonesForGoals(goals: GoalResponse[]): Observable<any> {
+    const requests = goals.map(goal => 
+      this.getGoalById(goal.goalId).pipe(
+        map(detailedGoal => {
+          goal.milestones = detailedGoal.milestones;
+          goal.progress = detailedGoal.progress;
+          return goal;
+        })
+      )
+    );
+    
+    return forkJoin(requests);
   }
 
   /**
@@ -124,8 +146,8 @@ export class GoalService {
 
     return this.http.get<GoalResponse>(url).pipe(
       map(response => {
-        console.log('📥 Goal details recibidos:', response);
-        return response;
+        console.log('📥 Goal details recibidos:', this.transformGoalResponse(response));
+        return this.transformGoalResponse(response);
       }),
       catchError(this.handleError)
     );
@@ -154,6 +176,71 @@ export class GoalService {
       milestones: goal.milestones || []
     };
   } 
+
+   /**
+   * Verificar si todos los milestones están completados
+   */
+  private areAllMilestonesCompleted(milestones: any[]): boolean {
+    if (!milestones || milestones.length === 0) {
+      return false;
+    }
+    
+    return milestones.every(m => m.isCompleted === true);
+  }
+
+  /**
+  * Actualizar un goal existente con sus milestones
+  */
+  updateGoalWithMilestones(goalId: number, goalData: any): Observable<any> {
+    const user = this.authService.loggedUser();
+    if (!user) {
+      return throwError(() => new Error('User not authenticated'));
+    }
+
+    const url = `${this.baseUrl}/GoalTracker/updateGoalWithMilestones/${goalId}`;
+
+    // Verificar si todos los milestones están completados
+    const allMilestonesCompleted = this.areAllMilestonesCompleted(goalData.milestones);
+      
+      // Si todos están completados, marcar el goal como achieved
+    const isAchieved = allMilestonesCompleted || goalData.isAchieved || false;
+
+    // Construir el request body según el modelo exacto que pide la API
+    const requestBody: GoalRequest = {
+      goalId: goalId,
+      goalName: goalData.goalName.trim(),
+      description: goalData.description?.trim() || '',
+      startDate: this.formatToISOString(goalData.startDate),
+      endDate: this.formatToISOString(goalData.endDate),
+      isAchieved: isAchieved,
+      userId: user.userId,
+      milestones: this.buildMilestonesForUpdate(goalData.milestones || [])
+    };
+
+    console.log('📤 Actualizando goal en:', url);
+    console.log('📦 Payload de actualización:', JSON.stringify(requestBody, null, 2));
+
+    return this.http.put<any>(url, requestBody).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Construir milestones para update (manteniendo IDs existentes)
+   */
+  private buildMilestonesForUpdate(milestones: any[]): MilestoneRequest[] {
+    if (!milestones || milestones.length === 0) {
+      return [];
+    }
+
+    return milestones.map(m => ({
+      milestoneId: m.milestoneId || 0, // Mantener ID si existe, 0 para nuevos
+      milestoneName: m.milestoneName?.trim() || '',
+      description: m.description?.trim() || '',
+      targetDate: this.formatToISOString(m.targetDate),
+      isCompleted: m.isCompleted || false
+    }));
+  }
 
   /**
    * Manejo de errores mejorado

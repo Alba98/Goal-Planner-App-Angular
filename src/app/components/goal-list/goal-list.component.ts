@@ -81,6 +81,14 @@ export class GoalListComponent implements OnInit {
     });
   }
 
+  onGoalUpdated() {
+    // Recargar la lista de goals cuando se actualiza un goal
+    this.loadGoals();
+    
+    // Opcional: mostrar mensaje de éxito
+    console.log('Goal updated successfully');
+  }
+
   viewGoalDetails(goal: GoalResponse) { // 👈 USAR GoalResponse
     if (!goal.goalId) return;
     
