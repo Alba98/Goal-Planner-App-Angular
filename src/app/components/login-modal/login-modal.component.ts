@@ -30,46 +30,45 @@ export class LoginModalComponent {
     password: '',
     mobileNo: ''
   };
+
+  // Para mostrar mensajes de error/éxito
+  errorMessage = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
+  isLoading = signal<boolean>(false);
   
   constructor(private authService: AuthService, private router: Router) {}
 
   // Cierra el modal (emite el evento al padre)
   closeModal() {
     this.close.emit();
+    // Limpiar mensajes al cerrar
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
   }
-
-  /*
-  // Maneja clics en el fondo del modal
-  onBackdropClick(event: MouseEvent) {
-    // Si el clic fue directamente en el elemento con clase 'modal' (el fondo)
-    if ((event.target as HTMLElement).classList.contains('modal')) {
-      this.closeModal();
-    }
-  }
-
-  // Cierra con la tecla Escape (solo si el modal está visible)
-  @HostListener('document:keydown.escape', ['$event'])
-  onEscape(event: KeyboardEvent) {
-    if (this.visible) {
-      this.closeModal();
-    }
-  }
-  */
 
   // Alternar entre login y registro
   toggleForm() {
     this.showLogin.update(value => !value);
+    // Limpiar mensajes al cambiar de formulario
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
   }
 
   // Método llamado al enviar login
   onLogin() {
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+    
     this.authService.login(this.loginObj).subscribe({
-      next: () => {
-        this.closeModal(); // Cierra el modal al loguearse
-        //this.router.navigate(['/dashboard']);
+      next: (response) => {
+        console.log('Login exitoso', response);
+        this.isLoading.set(false);
+        this.closeModal(); // Cierra el modal
+        this.router.navigate(['/dashboard']); // Navega al dashboard
       },
       error: (err) => {
-        // Muestra mensaje de error
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.message || 'Error al iniciar sesión. Inténtalo de nuevo.');
         console.error('Login error', err);
       }
     });
@@ -77,17 +76,50 @@ export class LoginModalComponent {
 
   // Método llamado al enviar registro
   onRegister() {
+    this.isLoading.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    
     this.authService.register(this.registerObj).subscribe({
-      next: () => {
-        // Al registrarse, también puede cerrar modal o cambiar a login
-        this.closeModal(); // this.closeModal(); o this.showLogin.set(true);
-        this.router.navigate(['/dashboard']);
+      next: (response) => {
+        console.log('Registro exitoso', response);
+        
+        // Después del registro exitoso, hacer login automático
+        this.successMessage.set('Registro exitoso. Iniciando sesión...');
+        
+        // Usar las mismas credenciales para login automático
+        const loginData: LoginData = {
+          emailId: this.registerObj.emailId,
+          password: this.registerObj.password
+        };
+        
+        this.authService.login(loginData).subscribe({
+          next: (loginResponse) => {
+            console.log('Login automático exitoso', loginResponse);
+            this.isLoading.set(false);
+            this.closeModal(); // Cierra el modal
+            this.router.navigate(['/dashboard']); // Navega al dashboard
+          },
+          error: (loginErr) => {
+            this.isLoading.set(false);
+            // Si el login automático falla, redirigir a login manual
+            this.errorMessage.set('Registro exitoso. Por favor, inicia sesión.');
+            this.showLogin.set(true); // Cambiar a vista de login
+            console.error('Error en login automático', loginErr);
+          }
+        });
       },
       error: (err) => {
-        // Muestra mensaje de error
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.message || 'Error al registrarse. Inténtalo de nuevo.');
         console.error('Register error', err);
       }
     });
   }
 
+  // Método para limpiar mensajes
+  clearMessages() {
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+  }
 }

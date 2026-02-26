@@ -2,6 +2,7 @@ import { Component, ElementRef, ViewChild } from '@angular/core';
 import { LoginModalComponent } from "../login-modal/login-modal.component";
 import { AuthService } from '../../services/auth.service';
 import { RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-navbar',
@@ -13,7 +14,7 @@ export class NavbarComponent {
   modalVisible = false;
 
   // Inyectamos el servicio y exponemos la señal de usuario
-  constructor(public authService: AuthService) {}
+  constructor(public authService: AuthService, private router: Router) {}
 
   openModal() {
     this.modalVisible = true;
@@ -26,6 +27,6 @@ export class NavbarComponent {
   logout() {
     this.authService.logout();
     // Opcional: redirigir al home TODO
-    // this.router.navigate(['/home']);
+    this.router.navigate(['/home']);
   }
 }
