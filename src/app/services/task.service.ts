@@ -106,8 +106,7 @@ export class TaskService {
     console.log('📤 Actualizando tarea:', url);
     console.log('📦 Payload:', JSON.stringify(requestBody, null, 2));
 
-    return this.http.put<TaskResponse>(url, requestBody).pipe(
-      map(response => this.transformTaskResponse(response)),
+    return this.http.put<any>(url, requestBody).pipe(
       catchError(this.handleError)
     );
   }
@@ -187,6 +186,7 @@ toggleTaskCompletion(taskId: number, currentStatus: boolean): Observable<TaskRes
    * Transformar respuesta de la API con campos calculados
    */
   private transformTaskResponse(task: any): TaskResponse {
+    console.log(task);
     const today = new Date();
     const dueDate = new Date(task.dueDate);
     const diffTime = dueDate.getTime() - today.getTime();

@@ -5,7 +5,7 @@
         <div class="d-flex justify-content-between align-items-start mb-2">
             <div class="d-flex align-items-center">
                 <!-- Checkbox para completar -->
-                <div class="form-check me-3" (click)="$event.stopPropagation()">
+            <div class="form-check me-3" (click)="$event.stopPropagation()">
                     <input 
                         type="checkbox" 
                         class="form-check-input" 
@@ -49,18 +49,20 @@
         </div>
 
         <!-- Días restantes si no está completada -->
-        @if (!task.isCompleted && task.daysRemaining !== undefined) {
-            <div class="mt-2 small" [class.text-danger]="task.daysRemaining < 3">
-                <i class="far fa-clock me-1"></i>
-                @if (task.daysRemaining > 0) {
-                    {{task.daysRemaining}} day{{task.daysRemaining !== 1 ? 's' : ''}} remaining
-                } @else if (task.daysRemaining === 0) {
-                    Due today
-                } @else {
-                    Overdue by {{Math.abs(task.daysRemaining)}} day{{Math.abs(task.daysRemaining) !== 1 ? 's' : ''}}
-                }
-            </div>
-        }
+        <div class="mt-2" [ngClass]="{'invisible-placeholder': !(!task.isCompleted && task.daysRemaining !== undefined)}">
+            @if (!task.isCompleted && task.daysRemaining !== undefined) {
+                <div class="small" [class.text-danger]="task.daysRemaining < 3">
+                    <i class="far fa-clock me-1"></i>
+                    @if (task.daysRemaining > 0) {
+                        {{task.daysRemaining}} day{{task.daysRemaining !== 1 ? 's' : ''}} remaining
+                    } @else if (task.daysRemaining === 0) {
+                        Due today
+                    } @else {
+                        Overdue by {{Math.abs(task.daysRemaining)}} day{{Math.abs(task.daysRemaining) !== 1 ? 's' : ''}}
+                    }
+                </div>
+            }
+        </div>
     </div>
 
     <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between">

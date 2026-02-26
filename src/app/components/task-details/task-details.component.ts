@@ -176,12 +176,16 @@ export class TaskDetailsComponent implements OnInit, OnChanges {
     this.close.emit();
   }
 
-  getFrequencyIcon(frequency: string): string {
-    switch(frequency) {
-      case 'Daily': return 'fas fa-sun';
-      case 'Weekly': return 'fas fa-calendar-week';
-      case 'Monthly': return 'fas fa-calendar-alt';
-      default: return 'fas fa-clock';
+  getFrequencyIconClass(): string {
+    switch(this.task.frequency) {
+      case 'Daily':
+        return 'fas fa-sun text-warning';
+      case 'Weekly':
+        return 'fas fa-calendar-week text-info';
+      case 'Monthly':
+        return 'fas fa-calendar-alt text-success';
+      default:
+        return 'fas fa-tasks text-primary';
     }
   }
 

@@ -25,3 +25,8 @@
     background-color: #28a745;
     border-color: #28a745;
 }
+
+.invisible-placeholder {
+  visibility: hidden;
+  height: 24px; /* Misma altura que el contenido real */
+}
