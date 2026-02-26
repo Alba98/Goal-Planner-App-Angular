@@ -8,10 +8,12 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
-                </li>
-                @if (authService.loggedUser()) {
+                @if (!authService.loggedUser()) {
+                    <li class="nav-item">
+                        <a class="nav-link" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+                    </li>
+                }
+                @else () {
                     <li class="nav-item">
                         <a class="nav-link" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
                     </li>

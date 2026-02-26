@@ -21,3 +21,14 @@
     box-shadow: none;
     border-color: #3498db;
 }
+
+.hover-text-primary:hover {
+    color: var(--bs-primary) !important;
+    transition: color 0.2s ease;
+}
+
+/* Para los iconos también */
+.hover-text-primary i:hover {
+    color: var(--bs-primary) !important;
+    transition: color 0.2s ease;
+}
