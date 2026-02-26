@@ -139,8 +139,7 @@ toggleTaskCompletion(taskId: number, currentStatus: boolean): Observable<TaskRes
 
       console.log('📤 Toggle task completion:', requestBody);
 
-      return this.http.put<TaskResponse>(url, requestBody).pipe(
-        map(response => this.transformTaskResponse(response)),
+      return this.http.put<any>(url, requestBody).pipe(
         catchError(this.handleError)
       );
     }),

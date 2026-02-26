@@ -70,7 +70,7 @@
 
     <!-- Filters and Search -->
     <div class="row mb-4 align-items-center">
-        <div class="col-md-8">
+        <div class="col-md-6">
             <div class="btn-group flex-wrap" role="group">
                 <button class="btn btn-sm" 
                         [class.btn-primary]="filter() === 'all'" 
@@ -96,24 +96,6 @@
                         (click)="setFilter('overdue')">
                     Overdue <span class="badge bg-secondary ms-1">{{stats().overdue}}</span>
                 </button>
-                <button class="btn btn-sm" 
-                        [class.btn-info]="filter() === 'today'" 
-                        [class.btn-outline-secondary]="filter() !== 'today'" 
-                        (click)="setFilter('today')">
-                    Today <span class="badge bg-secondary ms-1">{{stats().today}}</span>
-                </button>
-                <button class="btn btn-sm" 
-                        [class.btn-info]="filter() === 'tomorrow'" 
-                        [class.btn-outline-secondary]="filter() !== 'tomorrow'" 
-                        (click)="setFilter('tomorrow')">
-                    Tomorrow <span class="badge bg-secondary ms-1">{{stats().tomorrow}}</span>
-                </button>
-                <button class="btn btn-sm" 
-                        [class.btn-secondary]="filter() === 'week'" 
-                        [class.btn-outline-secondary]="filter() !== 'week'" 
-                        (click)="setFilter('week')">
-                    This Week <span class="badge bg-secondary ms-1">{{stats().thisWeek}}</span>
-                </button>
             </div>
         </div>
         <div class="col-md-4">
@@ -127,6 +109,20 @@
                     placeholder="Search reminders..." 
                     (input)="setSearchTerm($any($event.target).value)">
             </div>
+        </div>
+        <div class="col-md-2 text-end">
+            <button class="btn btn-outline-secondary me-2" (click)="toggleViewMode()" title="Toggle view">
+                @if (viewMode === 'grid') {
+                    <i class="fas fa-list"></i>
+                } @else {
+                    <i class="fas fa-th-large"></i>
+                }
+            </button>
+            @if (stats().acknowledged > 0) {
+                <button class="btn btn-outline-danger" (click)="archiveCompletedReminders()" title="Archive completed">
+                    <i class="fas fa-archive"></i>
+                </button>
+            }
         </div>
     </div>
 
@@ -156,7 +152,7 @@
         </div>
     }
 
-    <!-- Reminders List by Groups -->
+    <!-- Reminders List -->
     @if (!loading && !error) {
         @if (filteredReminders().length === 0) {
             <div class="text-center py-5">
@@ -170,28 +166,51 @@
                 </p>
             </div>
         } @else {
-            @for (group of ['overdue', 'today', 'tomorrow', 'thisWeek', 'later']; track group) {
-                @if (groupedReminders()[group].length > 0) {
-                    <div class="mb-4">
-                        <h5 class="mb-3">
-                            <i [class]="getGroupIcon(group) + ' me-2'"></i>
-                            {{getGroupTitle(group)}}
-                            <span class="badge bg-secondary ms-2">{{groupedReminders()[group].length}}</span>
-                        </h5>
-                        <div class="row g-3">
-                            @for (reminder of groupedReminders()[group]; track reminder.reminderId) {
-                                <div class="col-12 col-md-6 col-lg-4">
-                                    <app-reminder-item 
-                                        [reminder]="reminder"
-                                        (toggleAcknowledge)="toggleReminderAcknowledgement($event)"
-                                        (viewDetails)="viewReminderDetails($event)"
-                                        (delete)="deleteReminder($event)">
-                                    </app-reminder-item>
-                                </div>
-                            }
+            @if (viewMode === 'grid') {
+                <!-- Grid view - 3 columnas sin agrupación -->
+                <div class="row g-3">
+                    @for (reminder of filteredReminders(); track reminder.reminderId) {
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <app-reminder-item 
+                                [reminder]="reminder"
+                                (toggleAcknowledge)="toggleReminderAcknowledgement($event)"
+                                (viewDetails)="viewReminderDetails($event)"
+                                (delete)="deleteReminder($event)">
+                            </app-reminder-item>
                         </div>
-                    </div>
-                }
+                    }
+                </div>
+            } @else {
+                <!-- List view -->
+                <div class="list-group">
+                    @for (reminder of filteredReminders(); track reminder.reminderId) {
+                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3"
+                             (click)="viewReminderDetails(reminder)">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <div class="me-3">
+                                    <i [class]="getReminderListIcon(reminder) + ' fa-2x'"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1" [class.text-decoration-line-through]="reminder.isAcknowledged">
+                                        {{reminder.title}}
+                                    </h6>
+                                    <small class="text-muted">
+                                        {{reminder.reminderDateTime | date:'dd/MM/yyyy HH:mm'}}
+                                        @if (reminder.description) {
+                                            <span class="ms-2">• {{reminder.description | slice:0:30}}{{reminder.description.length > 30 ? '...' : ''}}</span>
+                                        }
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge me-3" [class]="getListBadgeClass(reminder)">
+                                    {{getListBadgeText(reminder)}}
+                                </span>
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
         }
     }

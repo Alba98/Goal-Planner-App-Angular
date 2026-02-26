@@ -1,25 +1,26 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { ReminderItemComponent } from '../reminder-item/reminder-item.component';
+import { NewReminderComponent } from '../new-reminder/new-reminder.component';
+import { ReminderDetailsComponent } from '../reminder-details/reminder-details.component';
 import { ReminderService } from '../../services/reminder.service';
 import { ReminderResponse } from '../../model/reminder';
-import { NewReminderComponent } from '../new-reminder/new-reminder.component';
-import { ReminderItemComponent } from '../reminder-item/reminder-item.component';
 import { NotificationService } from '../../services/notification.service';
-import { ReminderDetailsComponent } from '../reminder-details/reminder-details.component';
 
-type ReminderFilter = 'all' | 'pending' | 'acknowledged' | 'overdue' | 'today' | 'tomorrow' | 'week';
+type FilterType = 'all' | 'pending' | 'acknowledged' | 'overdue';
 
 @Component({
   selector: 'app-reminder-list',
   standalone: true,
   imports: [
-    CommonModule,
-    RouterModule,
-    FormsModule,
-    NewReminderComponent,
+    CommonModule, 
+    RouterModule, 
+    FormsModule, 
+    ReactiveFormsModule,
     ReminderItemComponent,
+    NewReminderComponent,
     ReminderDetailsComponent
   ],
   templateUrl: './reminder-list.component.html',
@@ -28,17 +29,17 @@ type ReminderFilter = 'all' | 'pending' | 'acknowledged' | 'overdue' | 'today' |
 export class ReminderListComponent implements OnInit {
   private reminderService = inject(ReminderService);
   private notificationService = inject(NotificationService);
-
-  // Signals
+  
+  // Signals para mejor reactividad
   private allReminders = signal<ReminderResponse[]>([]);
-  filter = signal<ReminderFilter>('all');
+  filter = signal<FilterType>('all');
   private searchTerm = signal('');
-
-  // Computed signals for filtered reminders
+  
+  // Computed signals para los reminders filtrados
   filteredReminders = computed(() => {
     let reminders = this.allReminders();
-
-    // Aplicar filtro
+    
+    // Aplicar filtro por estado
     switch (this.filter()) {
       case 'pending':
         reminders = reminders.filter(r => !r.isAcknowledged && !r.isOverdue);
@@ -49,27 +50,11 @@ export class ReminderListComponent implements OnInit {
       case 'overdue':
         reminders = reminders.filter(r => !r.isAcknowledged && r.isOverdue);
         break;
-      case 'today':
-        reminders = reminders.filter(r => r.isToday && !r.isAcknowledged);
-        break;
-      case 'tomorrow':
-        reminders = reminders.filter(r => r.isTomorrow && !r.isAcknowledged);
-        break;
-      case 'week':
-        // This requires a more complex calculation
-        const now = new Date();
-        const nextWeek = new Date(now);
-        nextWeek.setDate(now.getDate() + 7);
-        reminders = reminders.filter(r => {
-          const rDate = new Date(r.reminderDateTime);
-          return rDate >= now && rDate <= nextWeek && !r.isAcknowledged;
-        });
-        break;
-      default:
+      default: // 'all'
         break;
     }
-
-    // Aplicar búsqueda
+    
+    // Aplicar búsqueda por texto
     const search = this.searchTerm().toLowerCase();
     if (search) {
       reminders = reminders.filter(r => 
@@ -77,63 +62,51 @@ export class ReminderListComponent implements OnInit {
         r.description?.toLowerCase().includes(search)
       );
     }
-
-    // Ordenar: los más próximos primero
-    return reminders.sort((a, b) => {
-      return new Date(a.reminderDateTime).getTime() - new Date(b.reminderDateTime).getTime();
-    });
+    
+    return reminders;
   });
-
-  // Agrupar por fecha para mejor visualización
-  groupedReminders = computed(() => {
-    const reminders = this.filteredReminders();
-    const groups: { [key: string]: ReminderResponse[] } = {
-      overdue: [],
-      today: [],
-      tomorrow: [],
-      thisWeek: [],
-      later: []
-    };
-
-    const now = new Date();
-    const today = new Date(now);
+  
+  // Estadísticas
+  stats = computed(() => {
+    const reminders = this.allReminders();
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-
-    reminders.forEach(reminder => {
-      const reminderDate = new Date(reminder.reminderDateTime);
-      
-      if (reminder.isOverdue) {
-        groups['overdue'].push(reminder);
-      } else if (reminder.isToday) {
-        groups['today'].push(reminder);
-      } else if (reminder.isTomorrow) {
-        groups['tomorrow'].push(reminder);
-      } else if (reminderDate <= nextWeek) {
-        groups['thisWeek'].push(reminder);
-      } else {
-        groups['later'].push(reminder);
-      }
-    });
-
-    return groups;
+    const weekEnd = new Date(today);
+    weekEnd.setDate(today.getDate() + 7);
+    
+    return {
+      total: reminders.length,
+      acknowledged: reminders.filter(r => r.isAcknowledged).length,
+      pending: reminders.filter(r => !r.isAcknowledged && !r.isOverdue).length,
+      overdue: reminders.filter(r => !r.isAcknowledged && r.isOverdue).length,
+      today: reminders.filter(r => {
+        const rDate = new Date(r.reminderDateTime);
+        rDate.setHours(0, 0, 0, 0);
+        return !r.isAcknowledged && rDate.getTime() === today.getTime();
+      }).length,
+      tomorrow: reminders.filter(r => {
+        const rDate = new Date(r.reminderDateTime);
+        rDate.setHours(0, 0, 0, 0);
+        return !r.isAcknowledged && rDate.getTime() === tomorrow.getTime();
+      }).length,
+      thisWeek: reminders.filter(r => {
+        const rDate = new Date(r.reminderDateTime);
+        rDate.setHours(0, 0, 0, 0);
+        return !r.isAcknowledged && rDate >= today && rDate <= weekEnd;
+      }).length
+    };
   });
 
-  stats = computed(() => {
-    return this.reminderService.getReminderStats(this.allReminders());
-  });
-
-  // UI State
   showNewReminderModal = false;
   showDetailsModal = false;
   selectedReminder: ReminderResponse | null = null;
   loading = false;
   error: string | null = null;
+  viewMode: 'grid' | 'list' = 'grid'; // Para cambiar vista
 
   ngOnInit() {
     this.loadReminders();
@@ -142,7 +115,7 @@ export class ReminderListComponent implements OnInit {
   loadReminders() {
     this.loading = true;
     this.error = null;
-
+    
     this.reminderService.getAllRemindersByUser().subscribe({
       next: (reminders) => {
         console.log('Reminders loaded:', reminders);
@@ -157,12 +130,16 @@ export class ReminderListComponent implements OnInit {
     });
   }
 
-  setFilter(filter: ReminderFilter) {
+  setFilter(filter: FilterType) {
     this.filter.set(filter);
   }
 
   setSearchTerm(term: string) {
     this.searchTerm.set(term);
+  }
+
+  toggleViewMode() {
+    this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
   }
 
   openNewReminderModal() {
@@ -175,13 +152,12 @@ export class ReminderListComponent implements OnInit {
 
   onReminderCreated(reminderData: any) {
     this.loading = true;
-
+    
     this.reminderService.createReminder(reminderData).subscribe({
       next: (response) => {
-        console.log('Reminder created:', response);
+        console.log('Reminder created successfully:', response);
         this.loadReminders();
         this.closeNewReminderModal();
-        this.notificationService.success('Reminder created successfully', 'Success');
       },
       error: (error) => {
         this.error = error.message;
@@ -193,24 +169,27 @@ export class ReminderListComponent implements OnInit {
 
   onReminderUpdated() {
     this.loadReminders();
-    this.notificationService.success('Reminder updated successfully', 'Success');
-  }
-
-  toggleReminderAcknowledgement(reminder: ReminderResponse) {
-    this.reminderService.toggleReminderAcknowledgement(reminder).subscribe({
-      next: () => {
-        this.loadReminders();
-      },
-      error: (error) => {
-        console.error('Error toggling reminder:', error);
-        this.notificationService.error('Error updating reminder', 'Error');
-      }
-    });
+    console.log('Reminder updated successfully');
   }
 
   viewReminderDetails(reminder: ReminderResponse) {
-    this.selectedReminder = reminder;
-    this.showDetailsModal = true;
+    if (!reminder.reminderId) return;
+    
+    this.loading = true;
+    
+    this.reminderService.getReminderById(reminder.reminderId).subscribe({
+      next: (reminderDetails) => {
+        console.log('Reminder details loaded:', reminderDetails);
+        this.selectedReminder = reminderDetails;
+        this.showDetailsModal = true;
+        this.loading = false;
+      },
+      error: (error) => {
+        this.error = error.message;
+        this.loading = false;
+        console.error('Error loading reminder details:', error);
+      }
+    });
   }
 
   closeDetailsModal() {
@@ -218,45 +197,101 @@ export class ReminderListComponent implements OnInit {
     this.selectedReminder = null;
   }
 
+  toggleReminderAcknowledgement(reminder: ReminderResponse) {
+    // Lógica para cambiar el estado de acknowledged
+    console.log('Toggle reminder:', reminder);
+  }
+
   deleteReminder(reminderId: number) {
-    this.reminderService.deleteReminder(reminderId).subscribe({
-      next: () => {
-        this.loadReminders();
-        this.notificationService.success('Reminder deleted successfully', 'Success');
-      },
-      error: (error) => {
-        console.error('Error deleting reminder:', error);
-        this.notificationService.error('Error deleting reminder', 'Error');
-      }
-    });
+    // Lógica para eliminar reminder
+    console.log('Delete reminder:', reminderId);
   }
 
   retry() {
     this.loadReminders();
   }
 
-  getGroupTitle(group: string): string {
-    switch(group) {
-      case 'overdue': return '⚠️ Overdue';
-      case 'today': return '📅 Today';
-      case 'tomorrow': return '🌅 Tomorrow';
-      case 'thisWeek': return '📆 This Week';
-      case 'later': return '📌 Later';
-      default: return group;
+  // Método para archivar/eliminar reminders completados
+  archiveCompletedReminders() {
+    const completedReminders = this.allReminders().filter(r => r.isAcknowledged);
+    
+    if (completedReminders.length === 0) {
+      this.notificationService.info('No completed reminders to archive', 'Info');
+      return;
+    }
+    
+    if (confirm(`Are you sure you want to archive ${completedReminders.length} completed reminder(s)?`)) {
+      const activeReminders = this.allReminders().filter(r => !r.isAcknowledged);
+      this.allReminders.set(activeReminders);
+      
+      console.log(`📦 Archived ${completedReminders.length} completed reminders`);
+      this.notificationService.success(`Archived ${completedReminders.length} reminders`, 'Success');
     }
   }
 
-  getGroupIcon(group: string): string {
-    switch(group) {
-      case 'overdue': return 'fas fa-exclamation-triangle text-danger';
-      case 'today': return 'fas fa-sun text-warning';
-      case 'tomorrow': return 'fas fa-cloud-sun text-info';
-      case 'thisWeek': return 'fas fa-calendar-week text-primary';
-      case 'later': return 'fas fa-calendar-alt text-secondary';
-      default: return 'fas fa-bell';
-    }
+  // Métodos auxiliares para la vista de lista
+  getReminderListIcon(reminder: ReminderResponse): string {
+    if (reminder.isAcknowledged) return 'fas fa-check-circle text-success';
+    if (reminder.isOverdue) return 'fas fa-exclamation-circle text-danger';
+    if (reminder.isToday) return 'fas fa-bell text-warning';
+    if (reminder.isTomorrow) return 'fas fa-clock text-info';
+    return 'fas fa-bell text-primary';
   }
 
-  // Para usar en el template
-  protected Math = Math;
+  getListBadgeClass(reminder: ReminderResponse): string {
+    if (reminder.isAcknowledged) return 'bg-success';
+    if (reminder.isOverdue) return 'bg-danger';
+    if (reminder.isToday) return 'bg-warning';
+    if (reminder.isTomorrow) return 'bg-info';
+    return 'bg-primary';
+  }
+
+  getListBadgeText(reminder: ReminderResponse): string {
+    if (reminder.isAcknowledged) return 'Done';
+    if (reminder.isOverdue) return 'Overdue';
+    if (reminder.isToday) return 'Today';
+    if (reminder.isTomorrow) return 'Tomorrow';
+    return 'Upcoming';
+  }
+
+  // En el componente, agregamos una nueva señal computada para los reminders agrupados
+groupedReminders = computed(() => {
+  const reminders = this.filteredReminders();
+  const groups: { [key: string]: ReminderResponse[] } = {
+    'today': [],
+    'tomorrow': [],
+    'thisWeek': [],
+    'later': []
+  };
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const weekEnd = new Date(today);
+  weekEnd.setDate(today.getDate() + 7);
+  
+  reminders.forEach(reminder => {
+    const rDate = new Date(reminder.reminderDateTime);
+    rDate.setHours(0, 0, 0, 0);
+    
+    if (reminder.isAcknowledged) {
+      // Los completados los dejamos aparte
+      if (!groups['completed']) groups['completed'] = [];
+      groups['completed'].push(reminder);
+    } else if (rDate.getTime() === today.getTime()) {
+      groups['today'].push(reminder);
+    } else if (rDate.getTime() === tomorrow.getTime()) {
+      groups['tomorrow'].push(reminder);
+    } else if (rDate >= today && rDate <= weekEnd) {
+      groups['thisWeek'].push(reminder);
+    } else {
+      groups['later'].push(reminder);
+    }
+  });
+  
+  return groups;
+});
 }
